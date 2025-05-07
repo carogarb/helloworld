@@ -4,19 +4,30 @@ Este repositorio incluye un proyecto sencillo para demostrar los conceptos de pr
 El objetivo es que el alumno entienda estos conceptos, por lo que el código y la estructura del proyecto son especialmente sencillos.
 Este proyecto sirve también como fuente de código para el pipeline de Jenkins.
 
+## Phase 1:
+
 ### Create the docker image from Dockerfile:
 ```
-docker build --tag carogarb/jenkins-with-python .
+docker build --tag carogarb/jenkins-python:latest .
 ```
 
 ### Execute the container exposing ports:
 ```
-docker run -d -p 8090:8080 -p 50000:50000 -v jenkins-data:/var/jenkins_home --name jenkins-with-python carogarb/jenkins-with-python
+docker run -d -p 8090:8080 -p 50000:50000 -v jenkins-python-data:/var/jenkins_home --name jenkins-python carogarb/jenkins-python:latest
 ```
 
 ### To open a terminal into the running container, execute:
 ```
-docker exec -it jenkins-with-python bash
+docker exec -it jenkins-python bash
 ```
 
 ### Jenkins is available on http://localhost:8090/
+
+## Phase 2:
+
+To be able to use different agents we need to configure them in jenkins as Launch agent via command controller.
+We have created dedicated folders in the host to launch the agents: /jenkins/agent1
+```
+curl -sO http://localhost:8090/jnlpJars/agent.jar
+java -jar agent.jar -url http://localhost:8090/ -secret 0a214c21e134c9ccc382a072ecc95c0bd04c101a789ec95cfc7a274467bba40f -name agent1 -webSocket -workDir "/home/jenkins-agent1"
+```
