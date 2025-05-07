@@ -22,12 +22,3 @@ docker exec -it jenkins-python bash
 ```
 
 ### Jenkins is available on http://localhost:8090/
-
-## Phase 2:
-
-To be able to use different agents we need to configure them in jenkins as Launch agent via command controller.
-We have created dedicated folders in the host to launch the agents: /jenkins/agent1
-```
-curl -sO http://localhost:8090/jnlpJars/agent.jar
-java -jar agent.jar -url http://localhost:8090/ -secret 0a214c21e134c9ccc382a072ecc95c0bd04c101a789ec95cfc7a274467bba40f -name agent1 -webSocket -workDir "/home/jenkins-agent1"
-```
