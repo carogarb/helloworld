@@ -6,7 +6,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     echo 'Getting the repo'
-                    git branch: 'main', url: 'https://github.com/carogarb/helloworld.git'
+                    git branch: 'develop', url: 'https://github.com/carogarb/helloworld.git'
                     sh 'ls -la'
                     echo WORKSPACE                
                 }
