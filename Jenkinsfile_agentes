@@ -4,6 +4,7 @@ pipeline {
     options {
         timestamps()
         parallelsAlwaysFailFast()
+        skipDefaultCheckout()
         timeout(time: 5, unit: 'MINUTES')
     }
 
