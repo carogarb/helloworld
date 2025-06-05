@@ -11,28 +11,18 @@ pipeline {
     stages {
  
         stage('Checkout code') {
-                agent {
-                    label 'agent1'
-                }
-                steps {
-                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        sh 'hostname'
-                        git branch: 'main', url: 'https://github.com/carogarb/helloworld.git'
-                        stash name: 'source', includes: '**'                   
-                    }
-                }
+            agent {
+                label 'agent1'
             }
-
-        stage('Build code') {
-                agent {
-                    label 'agent2'
-                }
-                steps {
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh 'hostname'
-                    echo 'Not needed with python'
+                    git branch: 'main', url: 'https://github.com/carogarb/helloworld.git'
+                    stash name: 'source', includes: '**'                   
                 }
             }
-                
+        }
+
         stage('Run tests') {
             parallel {
 
@@ -45,9 +35,10 @@ pipeline {
                         sh '''
                             hostname
                             export PYTHONPATH=.
-                            pytest --junitxml=result-unit.xml test//unit
+                            pytest --junitxml=result-unit.xml --cov --cov-report=xml:coverage.xml test//unit
                         '''
-                        stash name: 'unit-test', includes: 'result-unit.xml' 
+                        junit 'result-unit.xml' 
+                        stash name: 'coverage-test', includes: 'coverage.xml' 
                     }
                 }                
 
@@ -75,27 +66,93 @@ pipeline {
                             export PYTHONPATH=.
                             pytest --junitxml=result-rest.xml test//rest
                         '''
-                        stash name: 'integration-test', includes: 'result-rest.xml' 
+                        junit 'result-rest.xml' 
                     }
                 } 
-                              
+                
+                stage('Static code analysis') {
+                    agent {
+                        label 'agent1'
+                    }
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            echo 'Running flake8'
+                            unstash 'source'
+                            sh '''
+                                hostname
+                                export PYTHONPATH=.
+                                flake8 --format=pylint --exit-zero app>flake8.out
+                            '''
+
+                            recordIssues tools:[flake8(name:'Flake8', pattern:'flake8.out')], healthy:8, unhealthy:10, qualityGates: [[threshold:8, type: 'TOTAL', unstable:true], [threshold:10, type:'TOTAL', unstable:true]]
+                        }    
+                    }
+                }  
+                
+               stage('Security tests') {
+                    agent {
+                        label 'agent2'
+                    }
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            echo 'Running bandit'
+                            unstash 'source'
+                            sh '''
+                                hostname
+                                export PYTHONPATH=.
+                                bandit --exit-zero -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}"
+                            '''
+
+                            recordIssues tools:[pyLint(name:'Bandit', pattern:'bandit.out')], healthy:2, unhealthy:4, qualityGates: [[threshold:2, type: 'TOTAL', unstable:true], [threshold:4, type:'TOTAL', unstable:true]]
+                        }                    
+                    }
+                }
+                
+                  stage('Performance tests') {
+                      agent {
+                        label 'agent1'
+                    }
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            echo 'Running flask in background'
+                            unstash 'source'
+                            sh '''
+                                hostname
+                                export FLASK_APP=app//api.py
+                                export FLASK_ENV=development
+                                flask run &
+                            '''
+
+                            echo 'Running jmeter'
+                            sh '''
+                                jmeter -n -t test//jmeter//flask.jmx -f -l flask.jtl
+                            '''
+
+                            perfReport sourceDataFiles: 'flask.jtl'
+                        }                    
+                    }
+                }
+                                           
             }
         }
         
-        stage('Results') {
+        
+        stage('Code Coverage') {
             agent {
-                    label 'agent2'
+                label 'agent1'
             }
             steps {
-                unstash 'unit-test'
-                unstash 'integration-test'
-                sh 'hostname'
-                junit 'result*.xml'
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    echo 'Running coverage'
+                    sh 'hostname'
+                    unstash 'coverage-test'
+                    cobertura autoUpdateHealth: false, onlyStable: false, autoUpdateStability: false, failNoReports: false, failUnhealthy: false, failUnstable: false, coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '90,0,80', lineCoverageTargets: '95,0,85'
+               }    
             }
-        }
-            
+        }            
+
     }
-   
+           
     post {
         always {
             node('agent1') {
@@ -103,5 +160,7 @@ pipeline {
             }
         }
     }
-    
+
+
 }
+    
