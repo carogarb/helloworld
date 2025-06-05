@@ -70,7 +70,7 @@ pipeline {
 
         stage('Static code analysis') {
             steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     echo 'Running flake8'
                     sh '''
                         export PYTHONPATH=.
@@ -84,7 +84,7 @@ pipeline {
 
        stage('Security tests') {
             steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     echo 'Running bandit'
                     sh '''
                         export PYTHONPATH=.
@@ -98,7 +98,7 @@ pipeline {
 
         stage('Performance tests') {
             steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     echo 'Running flask in background'
                             sh '''
                                 export FLASK_APP=app//api.py
@@ -118,7 +118,7 @@ pipeline {
 
         stage('Code Coverage') {
             steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     echo 'Running coverage'
                     /*
                     sh '''
@@ -128,7 +128,7 @@ pipeline {
                     '''
                     */
 
-                    cobertura coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '90,0,80', lineCoverageTargets: '95,0,85'
+                    cobertura autoUpdateHealth: false, onlyStable: false, autoUpdateStability: false, failNoReports: false, failUnhealthy: false, failUnstable: false, coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '90,0,80', lineCoverageTargets: '95,0,85'
                 }    
             }
         }
